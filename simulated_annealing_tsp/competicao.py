@@ -2,12 +2,14 @@ import numpy as np
 import numpy.typing as npt
 import scipy
 import matplotlib.pyplot as plt
+import argparse
+import time
 from numba import jit
 
-def generate_random_graph(number_of_nodes: np.int_) -> npt.NDArray[np.float_]:
-    nodes: npt.NDArray[np.float_] = np.random.rand(number_of_nodes, 2)
-    adjacency_matrix: npt.NDArray[np.float_] = scipy.spatial.distance_matrix(nodes, nodes)
-    return adjacency_matrix, nodes
+parser = argparse.ArgumentParser(description="Input file")
+parser.add_argument("--input", type=str)
+
+args = parser.parse_args()
 
 def plot_path(nodes: npt.NDArray[np.float_], path: npt.NDArray[np.int_], path_cost: np.float_) -> None:
     plt.figure(figsize=(4, 4))
@@ -37,8 +39,8 @@ def performe_monte_carlo_steps(number_of_monte_carlo_steps: np.int_, number_of_c
     for _ in range(number_of_monte_carlo_steps):
         for _ in range(number_of_cities):
             proposed_x, proposed_y = np.sort(np.random.choice(np.arange(number_of_cities), size=2, replace=False))
+            current_path = np.roll(current_path, shift=1)
             proposed_path: npt.NDArray[np.int_] = current_path.copy()
-            # proposed_path[proposed_x], proposed_path[proposed_y] = proposed_path[proposed_y], proposed_path[proposed_x]
             proposed_path[proposed_x + 1: proposed_y] = np.flip(proposed_path[proposed_x + 1: proposed_y])
 
             remove_edge_1_cost: np.float_ = graph[current_path[proposed_x]][current_path[(proposed_x + 1) % number_of_cities]]
@@ -58,10 +60,9 @@ def performe_monte_carlo_steps(number_of_monte_carlo_steps: np.int_, number_of_c
     return current_path, current_path_cost
 
 
-def tsp(number_of_cities: np.int_, temperature: np.float_, delta_t: np.float_, temperature_inferior_limit: np.float_) -> npt.NDArray[np.int_]:
+def tsp(graph: npt.NDArray[np.float_], nodes: npt.NDArray[np.float_], temperature: np.float_, delta_t: np.float_, temperature_inferior_limit: np.float_) -> npt.NDArray[np.int_]:
     number_of_monte_carlo_steps: np.int_ = 1 # hard coded
-    initial_temperature: np.float_ = temperature
-    graph, nodes = GRAPH, NODES
+    number_of_cities: np.int_ = graph.shape[0]
     current_path: npt.NDArray[np.int_] = np.arange(number_of_cities)
     np.random.shuffle(current_path)
     edges: npt.NDArray[np.int_] = np.append(np.lib.stride_tricks.sliding_window_view(current_path, 2), [[current_path[-1], current_path[0]]], axis=0)
@@ -78,3 +79,21 @@ def tsp(number_of_cities: np.int_, temperature: np.float_, delta_t: np.float_, t
 
     current_path = np.append(current_path, current_path[0])
     return current_path, current_path_cost, nodes, distances, temperatures
+
+# instance definition
+nodes: npt.NDArray[np.float_] = np.loadtxt(args.input)
+graph: npt.NDArray[np.float_] = scipy.spatial.distance_matrix(nodes, nodes)
+
+# initial config (can be changed)
+TEMPERATURE: np.float_ = 10.0
+DELTA_T: np.float_ = .99
+TEMPERATURE_INFERIOR_LIMIT: np.float_ = 0.0001
+
+start_time = time.time()
+
+path, path_cost, _, distances, temperatures = tsp(graph=graph, nodes=nodes, temperature=TEMPERATURE, delta_t=DELTA_T, temperature_inferior_limit=TEMPERATURE_INFERIOR_LIMIT)
+
+print(f"Cost: {path_cost}")
+print("--- %s seconds ---" % (time.time() - start_time))
+
+plot_path(nodes=nodes, path=path, path_cost=path_cost)
