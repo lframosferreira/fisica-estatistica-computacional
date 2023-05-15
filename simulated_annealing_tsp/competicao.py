@@ -89,11 +89,15 @@ TEMPERATURE: np.float_ = 10.0
 DELTA_T: np.float_ = .99
 TEMPERATURE_INFERIOR_LIMIT: np.float_ = 0.0001
 
-start_time = time.time()
+start_time: np.float_ = time.time()
 
 path, path_cost, _, distances, temperatures = tsp(graph=graph, nodes=nodes, temperature=TEMPERATURE, delta_t=DELTA_T, temperature_inferior_limit=TEMPERATURE_INFERIOR_LIMIT)
 
+total_time: np.float_ = time.time() - start_time
+
 print(f"Cost: {path_cost}")
-print("--- %s seconds ---" % (time.time() - start_time))
+
+print("--- %s seconds ---" % (total_time))
+print(f"1 / (cost * time): {1 / (path_cost * total_time)}")
 
 plot_path(nodes=nodes, path=path, path_cost=path_cost)
